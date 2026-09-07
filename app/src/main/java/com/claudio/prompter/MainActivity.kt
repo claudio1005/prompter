@@ -61,20 +61,39 @@ private val Accent = Color(0xFF4E6590)
 private val TextPrimary = Color(0xFF1B1B20)
 private val TextSecondary = Color(0xFF60616A)
 
-private data class PromptPreview(val title: String, val category: String, val favorite: Boolean)
+private data class PromptPreview(
+    val title: String,
+    val category: String,
+    val favorite: Boolean,
+    val text: String
+)
 
 @Composable
 private fun PrompterApp() {
     var search by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("Tutti") }
+    // Dati demo/test temporanei: non rappresentano contenuto prodotto definitivo.
     val prompts = listOf(
-        PromptPreview("Yu-Gi-Oh – crea carta", "Immagini", true),
-        PromptPreview("Flow – preserva soggetto", "Video", true),
-        PromptPreview("Ricerca approfondita", "Ricerca", true),
-        PromptPreview("Riscrivi testo in italiano", "Testo", false),
-        PromptPreview("Prompt immagine prodotto", "Immagini", false)
+        PromptPreview("Yu-Gi-Oh – crea carta", "Immagini", true,
+            "Crea una carta originale con nome, attributo ed effetto bilanciato."),
+        PromptPreview("Flow – preserva soggetto", "Video", true,
+            "Anima il soggetto mantenendone identità e proporzioni, con movimenti fluidi."),
+        PromptPreview("Ricerca approfondita", "Ricerca", true,
+            "Analizza l'argomento, confronta fonti affidabili e riporta conclusioni con riferimenti verificabili."),
+        PromptPreview("Riscrivi testo in italiano", "Testo", false,
+            "Riformula il contenuto con grammatica corretta e frasi chiare, preservando il significato originale."),
+        PromptPreview("Prompt immagine prodotto", "Immagini", false,
+            "Crea una fotografia del prodotto con illuminazione da studio e sfondo neutro.")
     )
     val filters = listOf("Tutti", "Immagini", "Video", "Ricerca", "Testo")
+    val query = search.trim()
+    val matchingPrompts = prompts.filter { prompt ->
+        (selectedFilter == "Tutti" || prompt.category == selectedFilter) &&
+            (query.isEmpty() ||
+                prompt.title.contains(query, ignoreCase = true) ||
+                prompt.category.contains(query, ignoreCase = true) ||
+                prompt.text.contains(query, ignoreCase = true))
+    }
 
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = Background) {
@@ -104,7 +123,7 @@ private fun PrompterApp() {
                         )
                     }
                     item { SectionTitle("Preferiti") }
-                    items(prompts.filter { it.favorite }) { prompt -> PromptCard(prompt) }
+                    items(matchingPrompts.filter { it.favorite }) { prompt -> PromptCard(prompt) }
                     item {
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(filters) { filter ->
@@ -117,7 +136,10 @@ private fun PrompterApp() {
                         }
                     }
                     item { SectionTitle("Tutti i prompt") }
-                    items(prompts.filter { selectedFilter == "Tutti" || it.category == selectedFilter }) { prompt ->
+                    if (matchingPrompts.isEmpty()) {
+                        item { Text("Nessun prompt trovato", color = TextSecondary) }
+                    }
+                    items(matchingPrompts) { prompt ->
                         PromptCard(prompt)
                     }
                 }
