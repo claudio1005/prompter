@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -35,6 +36,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,6 +79,9 @@ private data class PromptPreview(
 private fun PrompterApp() {
     var search by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("Tutti") }
+    val clipboardManager = LocalClipboardManager.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
     // Dati demo/test temporanei: non rappresentano contenuto prodotto definitivo.
     val prompts = listOf(
         PromptPreview("Yu-Gi-Oh – crea carta", "Immagini", true,
@@ -123,7 +133,12 @@ private fun PrompterApp() {
                         )
                     }
                     item { SectionTitle("Preferiti") }
-                    items(matchingPrompts.filter { it.favorite }) { prompt -> PromptCard(prompt) }
+                    items(matchingPrompts.filter { it.favorite }) { prompt ->
+                        PromptCard(prompt) {
+                            clipboardManager.setText(AnnotatedString(prompt.text))
+                            coroutineScope.launch { snackbarHostState.showSnackbar("Prompt copiato") }
+                        }
+                    }
                     item {
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(filters) { filter ->
@@ -140,9 +155,16 @@ private fun PrompterApp() {
                         item { Text("Nessun prompt trovato", color = TextSecondary) }
                     }
                     items(matchingPrompts) { prompt ->
-                        PromptCard(prompt)
+                        PromptCard(prompt) {
+                            clipboardManager.setText(AnnotatedString(prompt.text))
+                            coroutineScope.launch { snackbarHostState.showSnackbar("Prompt copiato") }
+                        }
                     }
                 }
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp)
+                )
                 FloatingActionButton(
                     onClick = {},
                     modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp),
@@ -161,7 +183,7 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun PromptCard(prompt: PromptPreview) {
+private fun PromptCard(prompt: PromptPreview, onCopy: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
@@ -182,7 +204,9 @@ private fun PromptCard(prompt: PromptPreview) {
                 Spacer(Modifier.height(4.dp))
                 Text(prompt.category, fontSize = 14.sp, color = TextSecondary)
             }
-            Icon(Icons.Outlined.ContentCopy, contentDescription = "Copia prompt", tint = Accent, modifier = Modifier.size(22.dp))
+            IconButton(onClick = onCopy) {
+                Icon(Icons.Outlined.ContentCopy, contentDescription = "Copia prompt", tint = Accent, modifier = Modifier.size(22.dp))
+            }
         }
     }
 }
